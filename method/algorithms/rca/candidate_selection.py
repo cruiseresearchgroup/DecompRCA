@@ -3,7 +3,7 @@
 Merges three signals to ensure low-magnitude but causally important
 metrics are not dropped from the LLM's view:
 
-  1. Top-N by RobustScaler z-score (standard Baro-style magnitude ranking) 50:50 vs standard scaler (TODO: Validate)
+  1. Top-N by RobustScaler z-score (BARO-style magnitude ranking, signed maximum)
   2. Earliest onset at a low z-threshold (catches early but small signals)
   3. State/discrete changes (catches binary flips: valve open→closed, pump on→off)
 """
@@ -188,49 +188,3 @@ def select_candidates(
             seen.add(metric)
 
     return selected
-
-
-def build_anomaly_summary(
-    scenario: FaultScenario, top_n: int = 15, time_unit: str = "s",
-) -> str:
-    """Build a text summary of candidate metrics for the LLM prompt.
-
-    Renders one line per candidate metric containing magnitude (z-score),
-    onset offset, and before/after means — the evidence format used in
-    the paper's LLM-reranker rows.
-    """
-    data = scenario.data.ffill().fillna(0)
-    diag = int(scenario.diagnosis_time)
-    normal = data.iloc[:diag]
-    anomal = data.iloc[diag:]
-
-    b_mean = normal.mean()
-    b_std = normal.std()
-
-    candidates = select_candidates(scenario, top_n_score=top_n)
-
-    lines = []
-    for rank, (metric, z, _reason) in enumerate(candidates, 1):
-        mean_before = b_mean.get(metric, 0)
-        std_before = b_std.get(metric, 0)
-        mean_after = anomal[metric].mean() if metric in anomal else 0
-
-        if std_before > 0:
-            zvals = ((anomal[metric] - mean_before) / std_before).abs()
-            exceeds = zvals[zvals >= 1.5]
-            offset = int(exceeds.index[0]) - diag if not exceeds.empty else "?"
-        else:
-            bval = mean_before
-            changed = anomal[metric][(anomal[metric] - bval).abs() > 1e-4]
-            offset = int(changed.index[0]) - diag if not changed.empty else "?"
-
-        delta = mean_after - mean_before
-        pct = (delta / mean_before * 100) if mean_before != 0 else 0
-
-        lines.append(
-            f"  {rank}. {metric}  |  z-score={z:.1f}  |  +{offset}{time_unit}  |  "
-            f"before={mean_before:.3f} → after={mean_after:.3f} "
-            f"(Δ={delta:+.3f}, {pct:+.1f}%)"
-        )
-
-    return "\n".join(lines)

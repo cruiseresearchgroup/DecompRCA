@@ -7,15 +7,14 @@ around per-dataset config from `_datasets.py`.
 
 from __future__ import annotations
 
-import concurrent.futures
 import hashlib
 import json
 import os
 import re
+import sys
 import time
 import warnings
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -86,14 +85,16 @@ def merge_aggregate(path: Path, new_row: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def make_client(model: str):
-    """Return an OpenAI-compatible client. Groq for `openai/...` models, else OpenAI."""
+    """Return an OpenAI-compatible client: OpenAI for native OpenAI models
+    (``gpt-*``, ``o1``/``o3``/``o4``), Groq for everything else (e.g. the paper's
+    ``openai/gpt-oss-120b`` and ``llama-3.3-70b-versatile``)."""
     from openai import OpenAI
-    if model.startswith("openai/"):
-        return OpenAI(
-            api_key=os.environ.get("GROQ_API_KEY", ""),
-            base_url="https://api.groq.com/openai/v1",
-        )
-    return OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+    if model.startswith(("gpt-", "o1", "o3", "o4")):
+        return OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+    return OpenAI(
+        api_key=os.environ.get("GROQ_API_KEY", ""),
+        base_url="https://api.groq.com/openai/v1",
+    )
 
 
 def llm_call_with_retry(client, model, messages, kw, max_retries: int = 8):
@@ -121,13 +122,17 @@ def llm_call_with_retry(client, model, messages, kw, max_retries: int = 8):
     raise last_err if last_err else RuntimeError("max retries exceeded")
 
 
+PARSE_FALLBACKS = 0   # responses that could not be parsed (counted, reported by runners)
+
+
 def parse_ranked_json(content: str, cand_names: list[str]) -> list[str]:
     """Extract the ranked list from a JSON LLM response, restricted to `cand_names`.
 
-    Falls back to the heuristic candidate order if parsing fails or the LLM
-    omits items. Also backfills any candidates the LLM dropped so downstream
-    top@k evaluation always sees a full list.
+    Falls back to the retriever's candidate order if parsing fails (counted in
+    ``PARSE_FALLBACKS``). Also backfills any candidates the LLM dropped so
+    downstream top@k evaluation always sees a full list.
     """
+    global PARSE_FALLBACKS
     try:
         s = content.strip()
         if s.startswith("```"):
@@ -144,6 +149,8 @@ def parse_ranked_json(content: str, cand_names: list[str]) -> list[str]:
                 out.append(m)
         return out
     except Exception:
+        PARSE_FALLBACKS += 1
+        print("  WARNING: unparsable LLM response -> retriever-order fallback")
         return list(cand_names)
 
 
@@ -155,10 +162,16 @@ def run_suffix(run_idx: int, temperature: float) -> str:
 
 
 def load_context(context_path: Path | None) -> str:
-    """Read a Light context file. Returns empty string for the no-DK level."""
+    """Read a Light context file. Returns empty string for the no-DK level.
+
+    A missing file raises rather than silently turning a with-DK run into
+    a no-DK one.
+    """
     if context_path is None:
         return ""
-    return context_path.read_text() if context_path.exists() else ""
+    if not context_path.exists():
+        raise FileNotFoundError(f"context file not found: {context_path}")
+    return context_path.read_text()
 
 
 # ---------------------------------------------------------------------------
@@ -336,7 +349,7 @@ def predict_one_scenario(
             except Exception:
                 pass
     else:
-        resp = client.chat.completions.create(model=model, messages=messages, **kw)
+        resp = llm_call_with_retry(client, model, messages, kw)
         content = resp.choices[0].message.content or ""
         ranked = parse_ranked_json(content, cand_names)
 
@@ -363,6 +376,24 @@ def llm_cache_dir(
     )
 
 
+def ensure_hash_seed() -> None:
+    """Re-launch the current program with PYTHONHASHSEED=0 if it is not set.
+
+    PC/FCI and CIRCA iterate over Python sets, whose order depends on the hash
+    seed; fixing it makes graph fitting and CIRCA's tie-breaking reproducible.
+    A ``python -m pkg.module`` invocation is re-launched with ``-m`` (so
+    package imports keep working); a script path is re-launched as is.
+    """
+    if os.environ.get("PYTHONHASHSEED") != "0":
+        env = dict(os.environ, PYTHONHASHSEED="0")
+        spec = getattr(sys.modules.get("__main__"), "__spec__", None)
+        if spec is not None and spec.name:
+            argv = [sys.executable, "-m", spec.name] + sys.argv[1:]
+        else:
+            argv = [sys.executable] + sys.argv
+        os.execve(sys.executable, argv, env)
+
+
 # Re-export Langfuse helpers so runners don't have to import llm_ranking directly.
 __all__ = [
     "BHNP_ROOT", "SUMMARY_MODE", "SELECTION_POLICY", "DK_DOC_TAG", "TOP_N",
@@ -370,5 +401,5 @@ __all__ = [
     "make_client", "llm_call_with_retry",
     "parse_ranked_json", "run_suffix", "load_context",
     "build_balanced_summary", "predict_one_scenario", "llm_cache_dir",
-    "log_run_summary", "build_system_prompt",
+    "log_run_summary", "build_system_prompt", "ensure_hash_seed",
 ]

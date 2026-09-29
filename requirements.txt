@@ -1,23 +1,40 @@
+# Python 3.10. Pinned direct dependencies of this release; requirements-lock.txt
+# is a full environment in which the tests and all imports were verified.
+#
+# Install in two steps (see README):
+#   pip install -r requirements.txt
+#   pip install --no-deps sfr-pyrca==1.0.1
+# sfr-pyrca (imported as `pyrca`; provides RCD and epsilon-Diagnosis) pins
+# scikit-learn<1.2, which conflicts with the rest of the stack; this release
+# uses it with the scikit-learn below, so it is installed without its pins.
+# Its runtime dependencies are listed here instead.
+
 # Core
-numpy
-pandas
-scikit-learn
-scipy
-networkx
-matplotlib
+numpy==2.2.6
+pandas==2.3.3
+scikit-learn==1.7.2
+scipy==1.15.3
+networkx==3.4.2
+matplotlib==3.10.0
+openpyxl==3.1.5            # SWaT .xlsx files
 
-# Causal discovery
-causal-learn        # PC, FCI (used by graph-based baselines)
+# Runtime dependencies of sfr-pyrca
+setuptools<81              # provides pkg_resources
+pyyaml==6.0.3
+pyparsing==3.3.1
+dill==0.4.1
+tqdm==4.67.1
 
-# RCA baselines
-pyrca               # RCD, ε-Diagnosis (BARO is implemented directly in method/algorithms/rca/baro.py)
-baro                # drop_constant utility used by baro adapter
-scikit-network      # PageRank
+# Causal discovery and baselines
+causal-learn==0.1.4.4      # PC, FCI
+fse-baro==0.2.2            # BARO utilities
+scikit-network==0.33.5     # PageRank
+circa-clue @ git+https://github.com/NetManAIOps/CIRCA.git@0215e1880096aa02a305c697f1c23cac4600ebd2
 
-# CIRCA (graph-based baseline)
-circa @ git+https://github.com/NetManAIOps/CIRCA.git
+# LLM reranker
+openai==2.38.0             # Groq serves an OpenAI-compatible API
+langfuse==3.12.1           # optional tracing
+python-dotenv==1.2.1
 
-# LLM stack
-openai              # Groq endpoint speaks the OpenAI API
-langfuse            # Per-call trace logging in run_llm_balanced.py
-python-dotenv
+# Tests
+pytest==9.1.1

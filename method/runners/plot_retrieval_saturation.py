@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Saturation curves: recall@K vs K, per signal, per dataset.
+"""Saturation curves: Retrieval@K vs K, per signal, per dataset.
 
 Each signal gets its own full K (no shared budget) so the curves show
 how quickly each retriever covers the ground-truth cause as the
 candidate budget grows.
 """
 
+import argparse
 import sys
 import warnings
 from pathlib import Path
@@ -16,7 +17,6 @@ BHNP_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BHNP_ROOT))
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from method.algorithms.rca.candidate_selection import (
@@ -82,6 +82,7 @@ def _curves(scenarios, K_list, *, service_level: bool):
 
 
 def main():
+    argparse.ArgumentParser(description=__doc__.split("\n\n")[0]).parse_args()
     print("Loading datasets…")
     rcaeval_all = RCAEvalDataset(
         suites=["RE1-OB", "RE1-SS", "RE1-TT"],
@@ -131,8 +132,8 @@ def main():
         ax.grid(True, alpha=0.3)
         ax.axvline(15, color="grey", linestyle=":", linewidth=1.0, alpha=0.7)
 
-    axes[0].set_ylabel("recall@K")
-    axes[3].set_ylabel("recall@K")
+    axes[0].set_ylabel("Retrieval@K")
+    axes[3].set_ylabel("Retrieval@K")
     axes[0].legend(loc="lower right", framealpha=0.95)
     plt.tight_layout()
 

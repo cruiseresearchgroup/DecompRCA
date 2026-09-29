@@ -45,3 +45,20 @@ method/datasets/*/graph_cache_per_scenario/
 method/datasets/*/llm_rca_cache_*/
 
 _archive/
+
+# Local symlinks to the raw datasets (a symlink is a file to git, so the
+# directory patterns above do not match it)
+method/datasets/swat/SWaT.A1*
+method/datasets/hvac/LBNL_FDD_Data_Sets_RTU
+method/datasets/rcaeval/RE1-*
+
+# Backstop: never commit raw data files anywhere under the dataset loaders
+method/datasets/**/*.csv
+method/datasets/**/*.xlsx
+method/datasets/**/*.xls
+method/datasets/**/*.parquet
+method/datasets/**/*.pkl
+method/datasets/**/*.zip
+
+# RCAEval checkout used by the BARO adapter on RCAEval (see README)
+/RCAEval

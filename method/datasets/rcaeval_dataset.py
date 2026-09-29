@@ -1,9 +1,9 @@
 """RCAEval dataset adapter — RE1 suite (Online Boutique, Sock Shop, Train Ticket).
 
 Data layout:
-  benchmark/datasets/rcaeval/{suite}/{service}_{fault}/{instance}/
-    data.csv        — 1-second time series, columns: time + {service}_{metric}
-    inject_time.txt — Unix timestamp of fault injection
+  method/datasets/rcaeval/{suite}/{service}_{fault}/{instance}/
+    simple_data.csv or data.csv — time series (1-second rows), columns: time + {service}_{metric}
+    inject_time.txt             — Unix timestamp of fault injection
 
 FaultScenario layout:
   - data: [last BASELINE_SECONDS of pre-inject window] + [POST_SECONDS after inject],
@@ -12,10 +12,9 @@ FaultScenario layout:
   - alarm_nodes: top-N metrics ranked by earliest z>=3 anomaly vs baseline.
   - ground_truth_causes: ["{service}_{fault}"] from directory name.
 
-Preprocessing matches original RCAEval main.py (--length 20 default):
-  - Window: 600 rows each side  (20 min * 60s / 2s sampling = 600)
-  - Drop lat-50 columns, rename _latency-90 -> _latency
-  - Drop constant columns, convert memory columns from bytes to MB
+Preprocessing matches RCAEval's ASE'24 main-ase.py (see _preprocess_rcaeval):
+  - Window: 600 rows each side (--length 20 default)
+  - Keep per-quantile latency columns; drop constant columns; memory bytes -> MB
 """
 
 import numpy as np
@@ -38,7 +37,7 @@ SUITE_DATASET_NAME = {
     "RE2-TT": "train-ticket",
 }
 
-BASELINE_SECONDS = 600    # matches RCAEval default --length 20 (20*60//2 = 600 rows)
+BASELINE_SECONDS = 600    # RCAEval default --length 20 takes up to 600 rows per side; RE1 has ~360-480
 POST_SECONDS     = 600    # same
 TOP_N_ALARMS     = 20     # top-N anomalous metrics as alarm_nodes
 
@@ -256,6 +255,7 @@ class RCAEvalDataset(BenchmarkDataset):
                 ground_truth_causes=[truth],
                 alarm_nodes=alarm_nodes,
                 description=f"{suite}: {service} {fault} fault (instance {instance})",
+                sample_rate_hz=1.0,
                 metadata={
                     "raw_df":       raw_df,
                     "inject_time":  inject_time,

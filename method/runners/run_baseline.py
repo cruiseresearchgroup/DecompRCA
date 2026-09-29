@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Baseline rows for Tables 5 / 6 — one runner, four datasets.
+"""Baseline rows for Tables 3, 5, 6 — one runner, four datasets.
 
 Runs the paper's statistical and graph-based baselines:
 
@@ -8,8 +8,10 @@ Runs the paper's statistical and graph-based baselines:
 
 Per-scenario PC / FCI graphs are cached under
 ``method/datasets/<ds>/graph_cache_per_scenario/`` so that re-running this
-script reads pre-fitted graphs instead of re-learning them (cached graphs
-ship with the repo; see DATA.md).
+script reads fitted graphs instead of re-learning them. ``--seed`` seeds RCD and
+epsilon-Diagnosis (numpy) per scenario; without it they are single unseeded runs.
+Any scenario on which a method fails falls back to the alarm ranking; the count
+is printed and written to the ``n_fallback`` column.
 
 Usage
 -----
@@ -19,9 +21,6 @@ Usage
     python method/runners/run_baseline.py --dataset rcaeval                # all suites
     python method/runners/run_baseline.py --dataset rcaeval --suite RE1-OB # one suite
     python method/runners/run_baseline.py --dataset swat --algos Baro RCD
-
-Replaces the per-dataset ``run_{wadi,swat,hvac,rcaeval}.py`` and
-``run_{wadi,hvac}_baselines.py`` scripts that previously lived here.
 """
 
 from __future__ import annotations
@@ -79,7 +78,7 @@ class _GraphAlgoWrapper:
             cd_name=self.cd_name, cache_dir=self.cache_dir,
         )
         if graph is None or graph.empty:
-            return list(scenario.alarm_nodes)
+            raise ValueError("causal discovery returned an empty graph")
         return self.head.predict(scenario, graph=graph)
 
 
@@ -194,8 +193,28 @@ def _merge_rcaeval(path: Path, new_row: dict) -> None:
 # Per-(dataset, suite?) run loop
 # ---------------------------------------------------------------------------
 
+_SEEDED_ALGOS = {"RCD", "EpsilonDiagnosis"}
+
+
+def _predict_all(adapter, scenarios, algo_name: str, seed: int | None):
+    """Run one method on every scenario; returns (predictions, n_fallback)."""
+    preds, n_fallback = [], 0
+    for sc in scenarios:
+        if seed is not None and algo_name in _SEEDED_ALGOS:
+            np.random.seed(seed)
+        try:
+            preds.append(adapter.predict(sc))
+        except Exception as e:
+            n_fallback += 1
+            print(f"  [{sc.scenario_id}] error: {e} -> alarm-ranking fallback")
+            preds.append(sc.alarm_nodes[:])
+    if n_fallback:
+        print(f"  WARNING: {algo_name} fell back on {n_fallback}/{len(scenarios)} scenarios")
+    return preds, n_fallback
+
+
 def run_dataset(dataset_name: str, algos: list[str] | None, suite: str | None,
-                save_dir: Path) -> None:
+                save_dir: Path, seed: int | None = None) -> None:
     cfg = get_dataset(dataset_name)
     algo_factories = _algo_factories(cfg)
     if algos is None:
@@ -216,15 +235,10 @@ def run_dataset(dataset_name: str, algos: list[str] | None, suite: str | None,
                 adapter = algo_factories[algo_name]()
                 print(f"=== {algo_name} ({s}) ===")
                 t0 = time.time()
-                preds = []
-                for sc in scenarios:
-                    try:
-                        preds.append(adapter.predict(sc))
-                    except Exception as e:
-                        print(f"  [{sc.scenario_id}] error: {e}")
-                        preds.append(sc.alarm_nodes[:])
+                preds, n_fb = _predict_all(adapter, scenarios, algo_name, seed)
                 per_suite_preds[s][algo_name] = preds
                 row = _compute_rcaeval_metrics(scenarios, preds, algo_name, group=s)
+                row["n_fallback"] = n_fb
                 print(
                     f"  done in {time.time() - t0:.1f}s | "
                     f"top@1_svc={row['top@1_svc']:.4f}  top@5_svc={row['top@5_svc']:.4f}  "
@@ -253,14 +267,9 @@ def run_dataset(dataset_name: str, algos: list[str] | None, suite: str | None,
             adapter = algo_factories[algo_name]()
             print(f"=== {algo_name} ===")
             t0 = time.time()
-            preds = []
-            for sc in scenarios:
-                try:
-                    preds.append(adapter.predict(sc))
-                except Exception as e:
-                    print(f"  [{sc.scenario_id}] error: {e}")
-                    preds.append(sc.alarm_nodes[:])
+            preds, n_fb = _predict_all(adapter, scenarios, algo_name, seed)
             metrics = compute_metrics(scenarios, preds, algo_name)
+            metrics["n_fallback"] = n_fb
             print(
                 f"  done in {time.time() - t0:.1f}s | "
                 f"top@1={metrics['top@1']:.4f}  top@3={metrics['top@3']:.4f}  "
@@ -277,7 +286,7 @@ def run_dataset(dataset_name: str, algos: list[str] | None, suite: str | None,
 
 def main():
     p = argparse.ArgumentParser(
-        description="Baseline rows for Tables 5/6 — one runner, four datasets."
+        description="Baseline rows for Tables 3, 5, 6 — one runner, four datasets."
     )
     p.add_argument("--dataset", required=True,
                    choices=["wadi", "swat", "hvac", "rcaeval"])
@@ -286,12 +295,17 @@ def main():
     p.add_argument("--algos", nargs="+", default=None,
                    help="Subset of algorithms to run. Default: all paper algos.")
     p.add_argument("--save-dir", default=str(BHNP_ROOT / "method" / "results"))
+    p.add_argument("--seed", type=int, default=None,
+                   help="Seed numpy per scenario for RCD and epsilon-Diagnosis "
+                        "(the paper's HVAC rows use --seed 0).")
     args = p.parse_args()
 
     save_dir = Path(args.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
-    run_dataset(args.dataset, args.algos, args.suite, save_dir)
+    run_dataset(args.dataset, args.algos, args.suite, save_dir, seed=args.seed)
 
 
 if __name__ == "__main__":
+    from method.runners._common import ensure_hash_seed
+    ensure_hash_seed()
     main()

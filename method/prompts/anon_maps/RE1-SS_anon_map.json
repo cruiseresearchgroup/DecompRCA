@@ -1,0 +1,19 @@
+{
+  "carts": "svc10",
+  "carts-db": "svc10-db",
+  "catalogue": "svc11",
+  "catalogue-db": "svc11-db",
+  "front-end": "svc09",
+  "istio-init": "svc05",
+  "orders": "svc08",
+  "orders-db": "svc08-db",
+  "payment": "svc04",
+  "queue-master": "svc03",
+  "rabbitmq": "svc01",
+  "rabbitmq-exporter": "svc06",
+  "session": "svc07",
+  "session-db": "svc07-db",
+  "shipping": "svc02",
+  "user": "svc12",
+  "user-db": "svc12-db"
+}

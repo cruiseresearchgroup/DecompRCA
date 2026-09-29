@@ -502,6 +502,7 @@ class SWaTDataset(BenchmarkDataset):
                 ground_truth_causes=valid_targets,
                 alarm_nodes=alarms,
                 description=atk["description"],
+                sample_rate_hz=1.0,
                 metadata={
                     "raw_attack_point": atk["raw_attack_point"],
                     "attack_start": str(t0),

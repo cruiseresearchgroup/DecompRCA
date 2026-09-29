@@ -8,12 +8,13 @@ class FaultScenario:
     """Everything needed to evaluate one fault/attack event."""
     scenario_id: str
     data: pd.DataFrame              # wide-format: time index × sensor columns
-    diagnosis_time: float            # seconds offset into `data` when RCA triggers
+    diagnosis_time: float            # row offset into `data` where RCA triggers (index counts rows)
     ground_truth_causes: list[str]   # true root-cause variable names
     alarm_nodes: list[str]           # observed anomalous sensors
     description: str = ""
     raw_data: pd.DataFrame | None = None  # long-format (time_s, node, value, type) if available
     metadata: dict = field(default_factory=dict)  # dataset-specific extras (e.g. inject_time, dataset_name, raw_df)
+    sample_rate_hz: float | None = None  # rows per second (1 for WADI/SWaT/RCAEval, 1/60 HVAC)
 
 
 class BenchmarkDataset(ABC):
@@ -23,8 +24,9 @@ class BenchmarkDataset(ABC):
     def load_normal_data(self) -> pd.DataFrame:
         """Return wide-format DataFrame of normal operation.
 
-        Columns are sensor/variable names, index is a numeric time axis
-        (seconds).  Values are float.  Used as input to causal discovery.
+        Columns are sensor/variable names, index is a numeric time axis in
+        the adapter's native unit (seconds for WADI / SWaT / RCAEval, minutes
+        for HVAC).  Values are float.  Used as input to causal discovery.
         """
 
     @abstractmethod

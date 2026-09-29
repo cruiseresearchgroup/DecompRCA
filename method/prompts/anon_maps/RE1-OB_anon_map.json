@@ -1,0 +1,22 @@
+{
+  "InboundPassthroughClusterIpv4": "svc19",
+  "PassthroughCluster": "svc18",
+  "adservice": "svc04",
+  "carts": "svc14",
+  "cartservice": "svc06",
+  "catalogue": "svc13",
+  "checkoutservice": "svc05",
+  "currencyservice": "svc03",
+  "emailservice": "svc11",
+  "front-end": "svc07",
+  "frontend": "svc20",
+  "frontend-check": "svc15",
+  "frontend-external": "svc12",
+  "main": "svc08",
+  "orders": "svc02",
+  "paymentservice": "svc09",
+  "productcatalogservice": "svc01",
+  "recommendationservice": "svc10",
+  "redis": "svc17",
+  "shippingservice": "svc16"
+}

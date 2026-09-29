@@ -3,7 +3,8 @@
 Contract:
   - Window the scenario data into (last `length*60*hz` of normal) +
     (first `length*60*hz` of fault), concatenated.
-  - Preprocess: drop_constant + drop_near_constant.
+  - Preprocess: drop_constant + drop_near_constant, then `_drop_collinear`
+    (drops exactly collinear columns before the fit).
   - Fit the causal graph per scenario on this windowed slice.
   - Cache by (scenario_id, cd_name, window_minutes).
 
@@ -14,7 +15,6 @@ candidate-column sets after preprocessing.
 
 from __future__ import annotations
 
-import hashlib
 import pickle
 from pathlib import Path
 
@@ -25,11 +25,12 @@ DATASET_SAMPLE_RATE_HZ: dict[str, float] = {
     "swat":    1.0,        # 1 sample per second
     "wadi":    1.0,        # 1 sample per second
     "hvac":    1.0 / 60.0, # 1 sample per minute
-    "rcaeval": 0.5,        # 1 sample per 2 seconds
+    "rcaeval": 0.5,        # RE1 rows are 1 s apart; 0.5 makes the 10-min default
+                           # take 300 rows (5 min) per side, as in the paper's graphs
 }
 
 # Default window size (minutes per side of diagnosis_time) per dataset.
-# Picked so each side has enough samples for a reasonable PC/FGES fit.
+# Picked so each side has enough samples for a reasonable PC/FCI fit.
 # Default 10 min per side gives 600 samples at 1 Hz / 300 samples at 0.5 Hz.
 # HVAC expands to 120 min because 1-min resolution would otherwise yield
 # only ~10 samples per side.
@@ -37,7 +38,7 @@ DEFAULT_WINDOW_MINUTES: dict[str, int] = {
     "swat":    10,    # 1 Hz × 10 min = 600 samples per side, 1200 total
     "wadi":    10,    # 1 Hz × 10 min = 600 samples per side, 1200 total
     "hvac":    120,   # 1/60 Hz × 120 min = 120 samples per side, 240 total
-    "rcaeval": 10,    # 0.5 Hz × 10 min = 300 samples per side, 600 total
+    "rcaeval": 10,    # with the 0.5 above: 300 rows (5 min) per side, 600 total
 }
 
 MIN_SAMPLES_PER_SIDE = 30
@@ -116,7 +117,7 @@ def fit_graph_per_scenario(
     Parameters
     ----------
     adapter : CDAdapter
-        Instance of PCAdapter / FGESAdapter / FCIAdapter / PCMCIAdapter.
+        Instance of PCAdapter / FCIAdapter.
     scenario : FaultScenario
         Scenario whose data will be sliced and used for fitting.
     dataset : str, optional
@@ -186,7 +187,6 @@ def _drop_collinear(df: pd.DataFrame, abs_corr_threshold: float = 0.9999) -> pd.
     Single-pass O(p^2). Threshold near 1.0 only kills *exact* collinearity
     (e.g., OA damper = 1 - RA damper) rather than merely high correlation.
     """
-    import numpy as np
     if df.shape[1] < 2:
         return df
     corr = df.corr().abs().fillna(0.0)
@@ -207,9 +207,8 @@ def fit_graphs_per_scenario(
 ) -> dict[str, pd.DataFrame]:
     """Convenience wrapper: fit a dict of named graphs for one scenario.
 
-    `cd_factories` is a list of (name, adapter_class, kwargs_dict) — same shape
-    used in run_wadi.py's CD_GRAPHS list. Failed fits return an empty DataFrame
-    rather than raising.
+    `cd_factories` is a list of (name, adapter_class, kwargs_dict). Failed fits
+    return an empty DataFrame rather than raising.
     """
     out: dict[str, pd.DataFrame] = {}
     for cd_name, cd_cls, cd_kwargs in cd_factories:

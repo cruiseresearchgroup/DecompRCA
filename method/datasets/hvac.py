@@ -29,7 +29,10 @@ FAULT_TRUTH: dict[str, list[str]] = {
 
 SEASONS = ["Fall_2020", "Spring_2021", "Summer_2021", "Winter_2022"]
 
-BASELINE_MINUTES = 90   # occupied baseline rows prepended to each scenario
+BASELINE_MINUTES = 900  # occupied baseline rows prepended to each scenario
+                        # (last full occupied day, 15 h x 60 min; shorter
+                        # windows fall in the schedule tail where the OA
+                        # damper is parked, giving zero-variance baselines)
 TOP_N_ALARMS     = 15   # top-N anomalous sensors reported as alarm_nodes
 
 
@@ -258,6 +261,7 @@ class HVACDataset(BenchmarkDataset):
                     ground_truth_causes=FAULT_TRUTH[ft],
                     alarm_nodes=alarm_nodes,
                     description=f"{ft} intensity={intensity} season={season}",
+                    sample_rate_hz=1.0 / 60.0,
                 )
             )
 

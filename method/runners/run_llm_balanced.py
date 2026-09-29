@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LLM-reranker rows for Tables 5 / 6 — one runner, four datasets.
+"""LLM-reranker rows for Tables 3, 5, 6 — one runner, four datasets.
 
 Implements the paper's balanced K=15 (5 magnitude + 5 onset + 5 state-change)
 candidate-selection policy + ``hybrid_clean`` summary mode + light-DK / no-DK
@@ -13,9 +13,6 @@ Usage
     python method/runners/run_llm_balanced.py --dataset hvac
     python method/runners/run_llm_balanced.py --dataset rcaeval --suite RE1-OB
     python method/runners/run_llm_balanced.py --dataset rcaeval          # all suites
-
-Replaces the per-dataset ``run_{wadi,swat,hvac,rcaeval}_llm_balanced.py``
-scripts that previously lived in this directory.
 """
 
 from __future__ import annotations
@@ -40,7 +37,7 @@ import pandas as pd
 
 from method.datasets.rcaeval_dataset import SUITES as RCAEVAL_SUITES
 from method.runners._common import (
-    DK_DOC_TAG, SELECTION_POLICY, SUMMARY_MODE, TOP_N,
+    DK_DOC_TAG, SELECTION_POLICY, SUMMARY_MODE,
     build_system_prompt, compute_metrics, llm_cache_dir, load_context,
     log_run_summary, make_client, merge_aggregate, predict_one_scenario,
     run_suffix,
@@ -93,7 +90,7 @@ def run_one_block(
     suite_tag = f"::suite={suite}" if suite else ""
     label = (
         f"LLM Ranking ({dk_label}, {SUMMARY_MODE}, {SELECTION_POLICY}"
-        f"{label_suffix})"
+        f"{label_suffix}){suite_tag}"
     )
 
     cache_dir = llm_cache_dir(dataset_root, model, level, suf)
@@ -104,6 +101,9 @@ def run_one_block(
           f"| n_scenarios={len(scenarios)}{suite_tag} ===")
     t0 = time.time()
     results: dict[str, list[str]] = {}
+    n_errors = 0
+    from method.runners import _common as common_mod
+    parse_fallbacks_before = common_mod.PARSE_FALLBACKS
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
         futures = {
             ex.submit(
@@ -122,12 +122,23 @@ def run_one_block(
                 results[sid] = ranked
                 print(f"  [{sid}] {source}  top1={ranked[0] if ranked else '?'}")
             except Exception as e:
-                print(f"  [{sc.scenario_id}] error: {e}")
+                n_errors += 1
+                print(f"  [{sc.scenario_id}] error: {e} -> alarm-ranking fallback")
                 results[sc.scenario_id] = sc.alarm_nodes[:]
     print(f"  done in {time.time() - t0:.1f}s")
 
     preds = [results[sc.scenario_id] for sc in scenarios]
-    metrics = compute_metrics(scenarios, preds, label)
+    if dataset_name == "rcaeval":
+        # Service-level scoring, identical to the baseline runner and the paper.
+        from method.runners.run_baseline import _compute_rcaeval_metrics
+        svc = _compute_rcaeval_metrics(scenarios, preds, label, group=suite or "ALL")
+        metrics = {"algorithm": label, "n_attacks": len(scenarios),
+                   **{k: svc[f"{k}_svc"] for k in ("top@1", "top@3", "top@5", "avg@5")}}
+    else:
+        metrics = compute_metrics(scenarios, preds, label)
+    metrics["n_fallback"] = n_errors + (common_mod.PARSE_FALLBACKS - parse_fallbacks_before)
+    if metrics["n_fallback"]:
+        print(f"  WARNING: {metrics['n_fallback']} scenario(s) used a fallback ranking")
     metrics["run_idx"] = run_idx
     metrics["temperature"] = temperature
     if suite:
@@ -173,7 +184,7 @@ def run_one_block(
 
 
 # ---------------------------------------------------------------------------
-# Stability summary across n_runs (paper Table 5/6 are the n_runs=3 mean)
+# Stability summary across n_runs (paper Tables 3, 5, 6 are the n_runs=3 mean)
 # ---------------------------------------------------------------------------
 
 def write_stability_summary(
@@ -245,7 +256,7 @@ def write_stability_summary(
 
 def main():
     p = argparse.ArgumentParser(
-        description="LLM reranker rows for Tables 5/6 — one runner, four datasets."
+        description="LLM reranker rows for Tables 3, 5, 6 — one runner, four datasets."
     )
     p.add_argument("--dataset", required=True,
                    choices=sorted(DATASETS.keys()))
@@ -313,7 +324,7 @@ def main():
                         dataset_root=cfg.dataset_root, time_unit=cfg.time_unit,
                         agg_path=agg_path, client=client, suite=s,
                     )
-                    per_level_runs[level].append(metrics)
+                    per_level_runs.setdefault(f"{level}::suite={s}", []).append(metrics)
             else:
                 domain_context = load_context(
                     cfg.context_path if level != "none" else None
@@ -346,4 +357,6 @@ def main():
 
 
 if __name__ == "__main__":
+    from method.runners._common import ensure_hash_seed
+    ensure_hash_seed()
     main()

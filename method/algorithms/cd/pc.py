@@ -8,14 +8,18 @@ from method.algorithms.cd.base import CDAdapter
 
 
 def _causallearn_to_directed_binary(graph_matrix: np.ndarray, node_names: list) -> pd.DataFrame:
-    """Convert causallearn -1/0/1 adjacency to directed binary adjacency.
+    """Convert a causallearn -1/0/1 graph to a cause→effect binary adjacency.
 
-    causallearn convention:
-        graph[j,i]=1, graph[i,j]=-1  →  i → j   (set binary[i,j]=1 only)
-        graph[i,j]=graph[j,i]=-1     →  i — j   (set both)
-        graph[i,j]=graph[j,i]=1      →  i <-> j  (set both)
+    causallearn stores, in graph[x, y], the edge mark at x's end of the x–y
+    edge (-1 = tail, 1 = arrowhead). So:
+        graph[i,j]=-1, graph[j,i]=1   →  i → j    (binary[i,j]=1)
+        graph[i,j]=graph[j,i]=-1      →  i — j    (both)
+        graph[i,j]=graph[j,i]=1       →  i <-> j  (both)
 
-    Logic mirrors RCAEval's page_rank_preprocess().
+    The output follows the row → column convention: binary[i,j]=1 means
+    i → j (cause → effect). Graph heads that walk toward causes reverse it
+    themselves. Note that RCAEval's page_rank_preprocess() emits the opposite
+    (effect → cause) orientation, which its PageRank consumes untransposed.
     """
     n = len(node_names)
     binary = np.zeros((n, n), dtype=float)
@@ -26,9 +30,9 @@ def _causallearn_to_directed_binary(graph_matrix: np.ndarray, node_names: list) 
                 pass
             elif va == -1 and vb == -1:          # undirected a -- b
                 binary[a, b] = binary[b, a] = 1
-            elif va == 1 and vb == -1:           # directed a -> b
+            elif va == -1 and vb == 1:           # tail at a, arrow at b: a -> b
                 binary[a, b] = 1
-            elif va == -1 and vb == 1:           # directed a <- b
+            elif va == 1 and vb == -1:           # arrow at a, tail at b: a <- b
                 binary[b, a] = 1
             elif va == 1 and vb == 1:            # bidirected a <-> b
                 binary[a, b] = binary[b, a] = 1

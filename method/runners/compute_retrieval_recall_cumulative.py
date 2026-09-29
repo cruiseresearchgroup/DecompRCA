@@ -19,6 +19,7 @@ Allocation (floor with remainder distributed mag → ons → stc):
 Output: method/results/retrieval_recall_cumulative.csv
 """
 
+import argparse
 import sys
 import warnings
 from pathlib import Path
@@ -124,6 +125,7 @@ def _eval(scenarios, *, service_level=False, K_list=(5, 10, 15)):
 
 
 def main():
+    argparse.ArgumentParser(description=__doc__.split("\n\n")[0]).parse_args()
     print("Loading datasets…")
     rcaeval_all = RCAEvalDataset(suites=["RE1-OB", "RE1-SS", "RE1-TT"]).load_fault_scenarios()
     re1ob = [s for s in rcaeval_all if s.metadata.get("suite") == "RE1-OB"]

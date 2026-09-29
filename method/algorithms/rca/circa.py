@@ -4,9 +4,11 @@ CIRCA (Causal Inference-Based Root Cause Analysis) from KDD'22.
 Paper: https://doi.org/10.1145/3534678.3539041
 Source: https://github.com/NetManAIOps/CIRCA (installed as package)
 
-Maps our FaultScenario → CIRCA's CaseData, optionally using a pre-built
-causal graph from the CD pipeline (StaticGraphFactory) or no graph
-(EmptyGraphFactory, falls back to NSigmaScorer).
+Maps our FaultScenario to CIRCA's CaseData and scores it with RHT + DA on a
+causal graph oriented cause -> effect (StaticGraphFactory); without a graph, the
+same scorers run on an edgeless graph. CIRCA trains on the scenario's baseline
+window and tests on its fault window, the same split every other method uses
+(see ``_scenario_to_case_data``).
 
 Node convention: Node(entity=col_name, metric="value") for each sensor col.
 SLI: the first (most anomalous) alarm node; falls back to first column.
@@ -19,8 +21,8 @@ import pandas as pd
 
 from circa.alg.ci import DAScorer, RHTScorer
 from circa.alg.ci.anm import ANMRegressor
-from circa.alg.common import Model, NSigmaScorer
-from circa.graph.common import EmptyGraphFactory, StaticGraphFactory
+from circa.alg.common import Model
+from circa.graph.common import StaticGraphFactory
 from circa.model.case import CaseData
 from circa.model.data_loader import MemoryDataLoader
 from circa.model.graph import MemoryGraph, Node
@@ -51,39 +53,46 @@ def _build_memory_graph(adj: pd.DataFrame, cols: list[str]) -> MemoryGraph:
 def _scenario_to_case_data(
     scenario: FaultScenario,
     sli_node: Node,
-    lookup_window_min: int,
-    detect_window_min: int,
-) -> CaseData:
-    """Convert FaultScenario wide-format data to CIRCA CaseData."""
-    data = scenario.data  # index = float seconds from window start
-    diag_time = scenario.diagnosis_time  # seconds
+) -> tuple[CaseData, float]:
+    """Convert a FaultScenario to CIRCA CaseData with the scenario's own split.
+
+    CIRCA fits its regressions on the first ``train_window`` points of each
+    series and tests on the last ``test_window`` points. We hand it the whole
+    scenario and set those windows to the rows before and from
+    ``diagnosis_time``, so CIRCA trains on exactly the baseline window and tests
+    on exactly the fault window that every other method sees. Returns the
+    CaseData and the analysis time ``current`` (the last timestamp).
+    """
+    data = scenario.data  # index counts rows (see FaultScenario)
+    diag_time = scenario.diagnosis_time
 
     # Build MemoryDataLoader dict: {entity: {metric: [(t, v), ...]}}
     loader_dict: dict = defaultdict(lambda: defaultdict(list))
     for col in data.columns:
-        entity = col
         series = [(float(t), float(v)) for t, v in zip(data.index, data[col])]
-        loader_dict[entity]["value"] = series
-
+        loader_dict[col]["value"] = series
     loader = MemoryDataLoader(dict({k: dict(v) for k, v in loader_dict.items()}))
 
-    # lookup_window: minutes of normal data before attack
-    # detect_window: minutes of anomalous data after attack start
-    total_secs = float(data.index[-1]) - diag_time
-    detect_window = max(1, min(detect_window_min, int(total_secs / 60)))
-    lookup_window = max(1, lookup_window_min)
-
-    return CaseData(
+    n_base = int((data.index < diag_time).sum())
+    n_fault = len(data) - n_base
+    if n_base < 2 or n_fault < 1:
+        raise ValueError(f"CIRCA needs a baseline and a fault window "
+                         f"(got {n_base} baseline and {n_fault} fault rows)")
+    step = float(data.index[1] - data.index[0])
+    last = float(data.index[-1])
+    # CaseData spans [detect_time - lookup_window * step, current]; with
+    # detect_time = current = last row and lookup_window = n - 1 that is the
+    # whole scenario, and train_window = lookup - detect + 1 = n_base.
+    case_data = CaseData(
         data_loader=loader,
         sli=sli_node,
-        detect_time=diag_time,
-        interval=__import__("datetime").timedelta(
-            seconds=int(data.index[1] - data.index[0]) if len(data) > 1 else 60
-        ),
-        lookup_window=lookup_window,
-        detect_window=detect_window,
+        detect_time=last,
+        interval=__import__("datetime").timedelta(seconds=step),
+        lookup_window=len(data) - 1,
+        detect_window=n_fault,
         prune=True,
     )
+    return case_data, last
 
 
 class CIRCAAdapter(RCAAdapter):
@@ -94,14 +103,8 @@ class CIRCAAdapter(RCAAdapter):
     tau_max : int
         Maximum time lag for RHTScorer (0 = contemporaneous only).
     use_graph : bool
-        If True and a graph is provided, use StaticGraphFactory.
-        If False or no graph, use EmptyGraphFactory.
-    lookup_window_min : int
-        Minutes of normal history to use as training window.
-    detect_window_min : int
-        Minutes after diagnosis_time to use as anomaly window.
-    n_sigma : float
-        Fallback n-sigma threshold for NSigmaScorer when no graph.
+        If True and a graph is provided, score on that graph; otherwise
+        score on an edgeless graph over all sensors.
     """
 
     requires_graph = False  # works with or without a graph
@@ -110,15 +113,9 @@ class CIRCAAdapter(RCAAdapter):
         self,
         tau_max: int = 0,
         use_graph: bool = True,
-        lookup_window_min: int = 30,
-        detect_window_min: int = 10,
-        n_sigma: float = 3.0,
     ):
         self.tau_max = tau_max
         self.use_graph = use_graph
-        self.lookup_window_min = lookup_window_min
-        self.detect_window_min = detect_window_min
-        self.n_sigma = n_sigma
 
     def predict(
         self,
@@ -159,17 +156,10 @@ class CIRCAAdapter(RCAAdapter):
         model = Model(graph_factory=graph_factory, scorers=scorers)
 
         # --- Build CaseData ---
-        case_data = _scenario_to_case_data(
-            scenario, sli_node, self.lookup_window_min, self.detect_window_min
-        )
+        case_data, current = _scenario_to_case_data(scenario, sli_node)
 
-        # --- Run analysis ---
-        try:
-            current = scenario.diagnosis_time + self.detect_window_min * 60
-            results = model.analyze(data=case_data, current=current)
-        except Exception as e:
-            print(f"  CIRCA error: {e} — falling back to unranked column order")
-            return list(cols)
+        # --- Run analysis (errors propagate so the runner counts them) ---
+        results = model.analyze(data=case_data, current=current)
 
         # --- Convert output to ranked list of column names ---
         ranked = [node.entity for node, _ in results if node.entity in cols]

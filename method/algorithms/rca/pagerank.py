@@ -5,7 +5,6 @@ Reimplemented for the benchmark's wide-format interface.
 """
 
 import numpy as np
-import networkx as nx
 import pandas as pd
 from sknetwork.ranking import PageRank
 

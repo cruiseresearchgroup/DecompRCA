@@ -386,6 +386,7 @@ class WADIDataset(BenchmarkDataset):
                     ground_truth_causes=valid_targets,
                     alarm_nodes=alarms,
                     description=atk["description"],
+                    sample_rate_hz=1.0,
                 )
             )
 
