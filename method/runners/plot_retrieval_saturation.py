@@ -103,6 +103,7 @@ def main():
     K_list = [1, 2, 3, 5, 7, 10, 15, 20, 25, 30, 40, 50]
 
     plt.rcParams.update({
+        "pdf.fonttype": 42,  # embed TrueType, not Type 3 (NeurIPS requirement)
         "font.size": 14,
         "axes.titlesize": 16,
         "axes.labelsize": 15,

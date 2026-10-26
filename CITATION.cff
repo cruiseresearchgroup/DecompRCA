@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this code or the Retrieval@K / Rerank@k metrics, please cite the paper."
-title: "Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition"
+title: "Where Root Cause Analysis Fails: A Retrieval–Reranking Decomposition"
 authors:
   - family-names: Muhammad
     given-names: Hada Melino
@@ -18,7 +18,7 @@ repository-code: "https://github.com/cruiseresearchgroup/DecompRCA"
 license: MIT
 preferred-citation:
   type: conference-paper
-  title: "Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition"
+  title: "Where Root Cause Analysis Fails: A Retrieval–Reranking Decomposition"
   authors:
     - family-names: Muhammad
       given-names: Hada Melino

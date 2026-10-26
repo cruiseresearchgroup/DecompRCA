@@ -8,8 +8,7 @@
 
 **NeurIPS 2026 · Evaluations & Datasets Track**
 
-[![Paper](https://img.shields.io/badge/Paper-NeurIPS%202026-4b44ce)](TODO_PAPER_URL)
-[![arXiv](https://img.shields.io/badge/arXiv-TODO-b31b1b)](TODO_ARXIV_URL)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.36686-b31b1b)](https://arxiv.org/abs/2609.36686)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 </div>
@@ -24,7 +23,7 @@
 
 - **Two metrics for any RCA method.** `Retrieval@K` (is the true cause inside the candidate set of size K?) and `Rerank@k` (given it is, is it ranked in the first k?), with **top@k = Retrieval@K × Rerank@k**. They work from a method's ranked output alone, with no access to its internals.
 - **Retrieval is a hidden bottleneck on industrial systems.** Deviation magnitude puts the true cause in the top 15 for 98–100% of microservice faults, but only 35–64% of faults on WADI, SWaT and HVAC, and even retrieved causes are hard to rank there.
-- **Graph-based RCA fails at both stages**, whether its causal graphs are learned on short fault windows, on candidate pools guaranteed to contain the cause, or on multi-day normal-operation data.
+- **Graph-based RCA never clearly beats the best statistical baseline**, whether its causal graphs are learned on short fault windows, on candidate pools guaranteed to contain the cause, or on multi-day normal-operation data.
 - **A simple two-stage pipeline** (multi-signal retriever + one listwise LLM call) matches or beats the best of nine baselines on all six benchmarks, with no causal graph or labels. When every method ranks the same candidates, adding a short system-description document puts it +7 to +18 top@1 points above the best baseline on every benchmark, a gain that end-to-end top@k hides.
 
 ## Use the metrics on your method
