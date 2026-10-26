@@ -1,6 +1,6 @@
 <div align="center">
 
-# Where Root Cause Analysis Fails: A Retrieval–Reranking Decomposition
+# Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition
 
 **Hada Melino Muhammad<sup>1</sup>, Luan Pham<sup>1</sup>, Laure Barrière<sup>2</sup>, Sachin Shetty<sup>2</sup>, Leonardo Pulga<sup>2</sup>, Flora D. Salim<sup>1</sup>**
 
@@ -124,7 +124,7 @@ method/
 
 ```bibtex
 @inproceedings{muhammad2026where,
-  title     = {Where Root Cause Analysis Fails: A Retrieval--Reranking Decomposition},
+  title     = {Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition},
   author    = {Muhammad, Hada Melino and Pham, Luan and Barri{\`e}re, Laure and
                Shetty, Sachin and Pulga, Leonardo and Salim, Flora D.},
   booktitle = {Advances in Neural Information Processing Systems},
