@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition">
+  <meta name="description" content="We split root cause analysis accuracy (top@k) into a retrieval stage and a reranking stage, measure both on six benchmark suites, and improve each stage separately. NeurIPS 2026.">
+  <meta name="keywords" content="root cause analysis, RCA, retrieval, reranking, LLM, cyber-physical systems, microservices, SWaT, WADI, RCAEval, NeurIPS">
+  <meta name="author" content="Hada Melino Muhammad, Luan Pham, Laure Barrière, Sachin Shetty, Leonardo Pulga, Flora D. Salim">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CRUISE Research Group, UNSW">
+  <meta property="og:title" content="Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition">
+  <meta property="og:description" content="We split root cause analysis accuracy (top@k) into a retrieval stage and a reranking stage, measure both on six benchmark suites, and improve each stage separately.">
+  <meta property="og:url" content="https://cruiseresearchgroup.github.io/DecompRCA/">
+  <meta property="og:image" content="https://cruiseresearchgroup.github.io/DecompRCA/static/images/social_preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Retrieval-reranking decomposition pipeline for root cause analysis">
+  <meta property="article:author" content="Hada Melino Muhammad">
+  <meta property="article:section" content="Research">
+  <meta property="article:tag" content="root cause analysis">
+  <meta property="article:tag" content="LLM reranking">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition">
+  <meta name="twitter:description" content="We split root cause analysis accuracy (top@k) into a retrieval stage and a reranking stage, measure both on six benchmark suites, and improve each stage separately.">
+  <meta name="twitter:image" content="https://cruiseresearchgroup.github.io/DecompRCA/static/images/social_preview.png">
+  <meta name="twitter:image:alt" content="Retrieval-reranking decomposition pipeline for root cause analysis">
+
+  <!-- Academic/Research Specific -->
+  <meta name="citation_title" content="Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition">
+  <meta name="citation_author" content="Muhammad, Hada Melino">
+  <meta name="citation_author" content="Pham, Luan">
+  <meta name="citation_author" content="Barrière, Laure">
+  <meta name="citation_author" content="Shetty, Sachin">
+  <meta name="citation_author" content="Pulga, Leonardo">
+  <meta name="citation_author" content="Salim, Flora D.">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_conference_title" content="Advances in Neural Information Processing Systems (NeurIPS)">
+  <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2609.36686">
+  <meta name="citation_arxiv_id" content="2609.36686">
+
+  <meta name="theme-color" content="#1e293b">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  <title>Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition</title>
+
+  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+  <link rel="stylesheet" href="static/css/decomp.css">
+
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  </noscript>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script defer src="static/js/index.js"></script>
+  <script defer src="static/js/decomp.js"></script>
+  <script defer src="static/js/teaser.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition",
+    "description": "We split root cause analysis accuracy (top@k) into a retrieval stage and a reranking stage, measure both on six benchmark suites, and improve each stage separately.",
+    "author": [
+      {"@type": "Person", "name": "Hada Melino Muhammad", "affiliation": {"@type": "Organization", "name": "University of New South Wales"}},
+      {"@type": "Person", "name": "Luan Pham", "affiliation": {"@type": "Organization", "name": "University of New South Wales"}},
+      {"@type": "Person", "name": "Laure Barrière", "affiliation": {"@type": "Organization", "name": "Baker Hughes"}},
+      {"@type": "Person", "name": "Sachin Shetty", "affiliation": {"@type": "Organization", "name": "Baker Hughes"}},
+      {"@type": "Person", "name": "Leonardo Pulga", "affiliation": {"@type": "Organization", "name": "Baker Hughes"}},
+      {"@type": "Person", "name": "Flora D. Salim", "affiliation": {"@type": "Organization", "name": "University of New South Wales"}}
+    ],
+    "datePublished": "2026",
+    "publisher": {"@type": "Organization", "name": "Advances in Neural Information Processing Systems (NeurIPS)"},
+    "url": "https://cruiseresearchgroup.github.io/DecompRCA/",
+    "image": "https://cruiseresearchgroup.github.io/DecompRCA/static/images/social_preview.png",
+    "keywords": ["root cause analysis", "retrieval", "reranking", "large language models", "cyber-physical systems", "microservices"],
+    "isAccessibleForFree": true
+  }
+  </script>
+</head>
+<body>
+
+  <button class="scroll-to-top" onclick="scrollToTop()" title="Scroll to top" aria-label="Scroll to top">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <main id="main-content">
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Where Root Cause Analysis Fails<span class="title-sub">A Retrieval-Reranking Decomposition</span></h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Hada Melino Muhammad<sup>1</sup>,</span>
+              <span class="author-block">Luan Pham<sup>1</sup>,</span>
+              <span class="author-block">Laure Barrière<sup>2</sup>,</span>
+              <span class="author-block">Sachin Shetty<sup>2</sup>,</span>
+              <span class="author-block">Leonardo Pulga<sup>2</sup>,</span>
+              <span class="author-block">Flora D. Salim<sup>1</sup></span>
+            </div>
+            <div class="publication-affiliations">
+              <span class="author-block"><sup>1</sup>University of New South Wales</span>
+              <span class="author-block"><sup>2</sup>Baker Hughes</span>
+            </div>
+            <span class="publication-venue">NeurIPS 2026</span>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="https://arxiv.org/pdf/2609.36686" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                    <span>Paper</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2609.36686" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="ai ai-arxiv"></i></span>
+                    <span>arXiv</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="https://github.com/cruiseresearchgroup/DecompRCA" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fab fa-github"></i></span>
+                    <span>Code</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="#BibTeX" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fas fa-quote-right"></i></span>
+                    <span>BibTeX</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Teaser: TL;DR, identity, failure ledger -->
+  <section class="hero teaser">
+    <div class="container is-max-desktop">
+      <div class="hero-body">
+        <div class="demo" data-demo="regime">
+          <div class="teaser-card">
+            <div class="fp-grid">
+              <div class="fp"></div>
+              <div class="fp"></div>
+              <span class="skip-hint">Click to skip <i class="fas fa-forward"></i></span>
+            </div>
+            <div class="teaser-narration" data-tone="step">
+              <div class="narr-body">
+                <span class="narr-step"></span>
+                <p class="narr-text"></p>
+                <p class="narr-eq" hidden></p>
+              </div>
+            </div>
+          </div>
+          <div class="teaser-controls">
+            <button type="button" class="play-btn" aria-label="Pause animation"><i class="fas fa-pause"></i></button>
+            <button type="button" class="ctrl-btn next-btn"><i class="fas fa-step-forward"></i> Next step</button>
+            <button type="button" class="ctrl-btn replay-btn"><i class="fas fa-redo"></i> Replay</button>
+            <span class="teaser-note">Click the animation to skip ahead. Toy example, not taken from a dataset.</span>
+          </div>
+        </div>
+
+        <p class="tldr"><strong>TL;DR.</strong> top@k accuracy mixes two different errors: the true cause was never among the candidates (retrieval), or it was there but ranked too low (reranking). We measure the two separately on six benchmark suites and address each with its own component.</p>
+
+        <div class="identity" aria-label="top at k equals Retrieval at K times Rerank at k">
+          <div class="term"><b>top@k</b><small>the reported metric</small></div>
+          <span class="op">=</span>
+          <div class="term r"><b>Retrieval@K</b><small>is the true cause among the K candidates?</small></div>
+          <span class="op">×</span>
+          <div class="term k"><b>Rerank@k</b><small>given that it is, is it in the top k?</small></div>
+        </div>
+
+        <figure class="figure-panel">
+          <div class="figure-head">
+            <h3>Breakdown of top@1 errors by stage</h3>
+            <div class="seg" role="group" aria-label="Reranker configuration">
+              <button type="button" id="dk-off" aria-pressed="true">LLM, no DK</button>
+              <button type="button" id="dk-on" aria-pressed="false">LLM, with DK</button>
+            </div>
+          </div>
+          <div class="ledger" id="ledger"></div>
+          <div class="legend">
+            <span><i style="background:var(--hit-color)"></i>Correct at top@1</span>
+            <span><i style="background:var(--rerank-color)"></i>Reranking failure (retrieved, ranked too low)</span>
+            <span><i style="background:var(--retr-color)"></i>Retrieval failure (never in the K=15 pool)</span>
+            <span><span class="dash"></span>BARO top@1 (best statistical baseline)</span>
+          </div>
+          <figcaption class="figure-caption">Multi-signal retriever (K=15) with a <span class="num">gpt-oss-120b</span> reranker, mean of 3 runs. On the microservice benchmarks nearly all errors happen at reranking. On the industrial control systems about a third of true causes are not retrieved, which limits accuracy regardless of the reranker. DK: a short natural-language description of the system.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Paper abstract -->
+  <section class="section hero is-light">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>Identifying the root cause of an anomaly among hundreds of sensors is critical for preventing safety incidents and costly downtime in complex monitored systems. Existing studies evaluate root cause analysis (RCA) methods using top@k accuracy. We show that this metric has a fundamental blind spot: it conflates two failure modes, <em>retrieval failure</em>, where the true cause is never considered, and <em>reranking failure</em>, where it is considered but ranked too low. In this work, we introduce a retrieval–reranking decomposition and audit four well-known benchmarks to expose this blind spot. Our experiments show that, on benchmarks with complex faults, statistical baselines mis-rank the true cause 79–100% of the time, and graph-based methods never clearly beat the best statistical baseline, whether their causal graphs are learned on short fault windows, on retrieved candidate pools guaranteed to contain the cause, or on multi-day normal-operation data. Meanwhile, on simple benchmarks where faults manifest significantly at their origin, retrieval is nearly solved (98–100%). Guided by the decomposition, we build a two-stage pipeline combining a multi-signal retriever with an LLM reranker that, as one fixed configuration, matches or exceeds the best baseline's top@1 accuracy on all six benchmark suites (by up to +12 points), with no causal graph or labeled data required. When all methods rank the same retrieved candidates with the true cause guaranteed present, adding a short system-description document lets the reranker lead the best baseline by +7 to +18 points on every benchmark.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Method -->
+  <section class="section" id="method">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Retrieval and Reranking</h2>
+      <div class="content has-text-justified">
+        <p>Any RCA method can be read as two steps: choose a set of candidate sensors, then order them. Statistical methods score every sensor, so their candidate set is complete and their errors come from ranking. Graph-based methods only consider the nodes their learned graph links to the anomaly, so a single missing edge can remove the true cause before ranking begins. Measuring the two steps separately shows which part of a method needs work.</p>
+      </div>
+      <div class="overview-figure">
+        <img src="static/images/overview.png" width="2543" height="1180" loading="lazy" alt="Pipeline diagram. Stage 1, retrieval: deviation magnitude, earliest onset and state-change detection each nominate sensors, and their union forms the candidate set C. Stage 2, reranking: an LLM reasoner reads per-candidate evidence and an optional domain-knowledge document D and outputs a permutation with the true cause on top. An inset shows how prior methods fail through propagation amplification or graph-quality bottlenecks.">
+      </div>
+      <p class="figure-caption has-text-centered">Stage 1 builds the candidate set C from three signals. Stage 2 reranks C with an LLM given per-candidate evidence and, optionally, a domain-knowledge document D. The same configuration is used for every dataset, without a causal graph or labeled fault data.</p>
+      <div class="columns" style="margin-top:1.25rem">
+        <div class="column">
+          <div class="signal-card mag"><h4>Deviation magnitude</h4><code>φ_mag</code><p>Normalized shift from the baseline window. Works best when the cause shows the largest change, as in direct faults.</p></div>
+        </div>
+        <div class="column">
+          <div class="signal-card ons"><h4>Earliest onset</h4><code>φ_ons</code><p>Time of first deviation, earliest first. Captures temporal order when the deviation at the source is small.</p></div>
+        </div>
+        <div class="column">
+          <div class="signal-card stc"><h4>State change</h4><code>φ_stc</code><p>Whether a discrete sensor leaves its usual state. Aimed at actuator and mode-switch faults, such as a valve forced open.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Findings -->
+  <section class="section hero is-light" id="findings">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Findings</h2>
+
+      <div class="finding columns">
+        <div class="column is-5">
+          <span class="label">Finding 1 · Retrieval</span>
+          <div class="big retr">35–64%<small>Retrieval@15</small></div>
+          <h3>On industrial control systems, ranking by deviation magnitude leaves a third or more of true causes outside the top 15.</h3>
+          <p class="side-note">On microservices the same signal reaches 98–100%. No single extra signal is best on every system, and combining them raises CPS Retrieval@15 to 63–67%.</p>
+        </div>
+        <div class="column is-7">
+          <div class="figure-panel">
+            <div class="ds-tabs" role="group" aria-label="Dataset" id="sat-tabs"></div>
+            <p class="regime" id="sat-regime"></p>
+            <div class="chart" id="sat-chart"></div>
+            <div class="readout">
+              <label for="sat-k">K = <span id="sat-kval">15</span></label>
+              <input type="range" id="sat-k" min="0" max="11" step="1" value="6" aria-describedby="sat-vals">
+              <div class="vals" id="sat-vals" aria-live="polite"></div>
+            </div>
+            <p class="figure-caption">Retrieval@K for each signal on its own (saturation figure in the appendix). Move the slider to read values. The red line marks K=15, the budget used in all experiments.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding columns">
+        <div class="column is-5">
+          <span class="label">Finding 2 · Reranking</span>
+          <div class="big rerank">79–100%<small>mis-ranked</small></div>
+          <h3>Statistical baselines score every sensor but still rank the wrong one first on CPS.</h3>
+        </div>
+        <div class="column is-7 content">
+          <p>BARO scores every sensor, so it retrieves every cause except two that no sensor measures. Even so, its top@1 on CPS is at most 0.214. Graph-based methods are no better: CIRCA, PageRank and random walk on PC/FCI graphs stay at or below 0.214 top@1 on all CPS benchmarks.</p>
+          <p>Making graph learning easier does not help either. Graphs fitted on 15-node pools known to contain the cause, and global graphs learned from several days of normal operation, still do not clearly outperform the best statistical baseline. On WADI and SWaT the cause is in the learned graph in 71% and 86% of scenarios, but it is ranked first in at most 21% and 8%.</p>
+        </div>
+      </div>
+
+      <div class="finding columns">
+        <div class="column is-5">
+          <span class="label">Finding 3 · Remedies</span>
+          <div class="big"><small style="margin:0 .3rem 0 0">up to</small>+12<small>pts top@1</small></div>
+          <h3>Each failure mode can be addressed separately, with one configuration for all six suites.</h3>
+        </div>
+        <div class="column is-7 content">
+          <p>The multi-signal retriever reduces retrieval failures, and the LLM reranker matches or exceeds the best baseline's top@1 on every suite. When the true cause is added to every pool and all nine baselines are re-run on the same candidates, the reranker is never worse than any of them, and with the domain document it beats the best one by 6.7 to 18.1 points on every benchmark (see <a href="#results">Results</a>).</p>
+          <p>Fixed ranking rules do not get there. When the same 15 candidates are reranked by magnitude, onset, state change or a Borda combination, the best rule differs across benchmarks, and the rule that does best on HVAC scores 0.000 on Train Ticket.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Results -->
+  <section class="section" id="results">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Results</h2>
+      <div class="figure-head">
+        <h3>top@1 across six benchmark suites</h3>
+        <div class="seg" role="group" aria-label="Evaluation protocol">
+          <button type="button" id="t-e2e" aria-pressed="true">End to end</button>
+          <button type="button" id="t-ctl" aria-pressed="false">True cause in pool</button>
+        </div>
+      </div>
+      <div class="table-scroll"><table class="results-table" id="results-table"></table></div>
+      <p class="figure-caption" id="results-caption"></p>
+    </div>
+  </section>
+
+
+  <!-- Implications and limitations -->
+  <section class="section hero is-light">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Implications and Limitations</h2>
+      <div class="columns">
+        <div class="column content">
+          <h4>Detection and RCA should be designed together</h4>
+          <p>The anomaly detector determines what the retriever can see. Which signal exposes a fault depends on the system (onset on HVAC, state change on SWaT, magnitude on microservices), and a detector that does not match the system limits accuracy however good the reranker is. Benchmarks made of direct faults overstate retrieval coverage for systems where faults propagate.</p>
+        </div>
+        <div class="column content limits">
+          <h4>Limitations</h4>
+          <ul>
+            <li>The benchmarks with propagating faults are small (14, 36 and 48 scenarios) and only cover water and building systems.</li>
+            <li>The CPS gains assume the detection timestamp is accurate to within 5 minutes. An error of ±5 min lowers retrieval by up to 27 points.</li>
+            <li>Retriever settings were chosen on the same benchmarks, and the domain document is passed to the reranker as is, without adaptive ingestion.</li>
+            <li>The LLM reranker is nondeterministic, so we recommend showing operators a short ranked list with its supporting evidence and keeping a human in the loop.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!--BibTex citation -->
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <div class="bibtex-header">
+        <h2 class="title">BibTeX</h2>
+        <button class="copy-bibtex-btn" onclick="copyBibTeX()" title="Copy BibTeX to clipboard">
+          <i class="fas fa-copy"></i>
+          <span class="copy-text">Copy</span>
+        </button>
+      </div>
+      <pre id="bibtex-code"><code>@inproceedings{muhammad2026where,
+  title     = {Where Root Cause Analysis Fails: A Retrieval-Reranking Decomposition},
+  author    = {Muhammad, Hada Melino and Pham, Luan and Barri{\`e}re, Laure and
+               Shetty, Sachin and Pulga, Leonardo and Salim, Flora D.},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2026},
+  eprint    = {2609.36686},
+  archivePrefix = {arXiv}
+}</code></pre>
+    </div>
+  </section>
+  </main>
+
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <p>
+              This research is supported by Baker Hughes, the ARC Training Centre for Whole Life Design of Carbon Neutral Infrastructure (IC230100015), and the ARC Centre of Excellence for Automated Decision-Making and Society (CE200100005).
+            </p>
+            <p>
+              This page is built on the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a>, adapted from <a href="https://nerfies.github.io" target="_blank">Nerfies</a>, and is licensed under <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
